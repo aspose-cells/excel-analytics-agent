@@ -264,8 +264,9 @@ and more like a **production-grade data analyst pipeline system**
 
 ## 📄 License
 
-MIT
+All examples use Aspose.Cells for Python via .NET.
 
+The examples can be evaluated using the free evaluation version. A valid license is recommended for production use. For licensing details, please refer to the Aspose website.
 ---
 
 ## 🤝 Contributing
