@@ -1,0 +1,35 @@
+# GitLab CODEOWNERS
+# See https://docs.gitlab.com/ee/user/project/codeowners/
+
+# Default owners
+* @aspose/maintainers
+
+# Core application
+/app/ @aspose/core-devs
+/app/agents/ @aspose/core-devs
+/app/pipeline/ @aspose/core-devs
+/app/registry/ @aspose/core-devs
+
+# Analysis modules
+/app/analysis/ @aspose/data-scientists
+/app/tools/ @aspose/data-scientists
+
+# Excel processing
+/app/excel/ @aspose/excel-devs
+
+# LLM integration
+/app/llm/ @aspose/ai-devs
+/app/llm/prompts/ @aspose/ai-devs
+
+# CI/CD and infrastructure
+/.github/ @aspose/devops
+/.gitlab-ci.yml @aspose/devops
+/docker/ @aspose/devops
+
+# Tests
+/tests/ @aspose/qa-devs
+
+# Configuration and documentation
+/*.md @aspose/tech-writers
+/config.py @aspose/core-devs
+/requirements.txt @aspose/core-devs

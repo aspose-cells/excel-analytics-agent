@@ -1,0 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
+MODEL = os.getenv("MODEL", "gpt-oss")
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SAMPLE_PATH = PROJECT_ROOT / "samples"
+OUTPUT_PATH = PROJECT_ROOT / "output"

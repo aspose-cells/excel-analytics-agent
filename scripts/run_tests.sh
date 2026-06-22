@@ -1,0 +1,3 @@
+#!binbash
+
+pytest -v

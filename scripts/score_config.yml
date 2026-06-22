@@ -1,0 +1,153 @@
+dimensions:
+  agent_score:
+    label: "Agent Score"
+    scale: "S0-S9"
+    checks:
+      - id: "features_completeness"
+        weight: 10
+      - id: "has_tests"
+        weight: 10
+      - id: "has_ci_cd"
+        weight: 8
+      - id: "has_docker"
+        weight: 8
+      - id: "has_documentation"
+        weight: 8
+      - id: "type_hints"
+        weight: 8
+      - id: "docstrings"
+        weight: 8
+      - id: "error_handling"
+        weight: 10
+      - id: "logging"
+        weight: 8
+      - id: "config_management"
+        weight: 5
+      - id: "code_modularity"
+        weight: 5
+      - id: "dependency_management"
+        weight: 5
+      - id: "has_examples"
+        weight: 3
+      - id: "has_license"
+        weight: 2
+      - id: "has_security_policy"
+        weight: 2
+
+  agentic:
+    label: "Agentic"
+    scale: "A0-A9"
+    checks:
+      - id: "has_automation"
+        weight: 5
+      - id: "llm_integration"
+        weight: 15
+      - id: "multi_step_pipeline"
+        weight: 15
+      - id: "state_persistence"
+        weight: 10
+      - id: "error_framework"
+        weight: 10
+      - id: "validation_gates"
+        weight: 10
+      - id: "tool_registry"
+        weight: 10
+      - id: "dynamic_discovery"
+        weight: 5
+      - id: "health_monitoring"
+        weight: 10
+      - id: "autonomous_execution"
+        weight: 5
+      - id: "self_improvement"
+        weight: 5
+
+  practices:
+    label: "Practices"
+    scale: "P0-P9"
+    checks:
+      - id: "project_structure"
+        weight: 8
+      - id: "test_coverage"
+        weight: 10
+      - id: "dependency_management"
+        weight: 5
+      - id: "ci_pipeline"
+        weight: 10
+      - id: "docker_build"
+        weight: 5
+      - id: "logging_infra"
+        weight: 10
+      - id: "health_checks"
+        weight: 5
+      - id: "type_hints_pct"
+        weight: 8
+      - id: "docstrings_pct"
+        weight: 8
+      - id: "error_framework"
+        weight: 8
+      - id: "error_handling_pct"
+        weight: 8
+      - id: "logging_pct"
+        weight: 5
+      - id: "security_scanning"
+        weight: 5
+      - id: "self_healing"
+        weight: 5
+
+  readiness:
+    label: "Readiness"
+    scale: "R0-R9"
+    checks:
+      - id: "docker_deployable"
+        weight: 10
+      - id: "code_ownership"
+        weight: 8
+      - id: "contributing_guide"
+        weight: 5
+      - id: "changelog"
+        weight: 5
+      - id: "version_control"
+        weight: 8
+      - id: "license"
+        weight: 8
+      - id: "security_policy"
+        weight: 8
+      - id: "state_persistence"
+        weight: 8
+      - id: "logging_infra"
+        weight: 10
+      - id: "ci_cd_pipeline"
+        weight: 10
+      - id: "env_config"
+        weight: 5
+      - id: "compliance_framework"
+        weight: 5
+      - id: "independent_verification"
+        weight: 5
+      - id: "formal_assurance"
+        weight: 5
+
+  evidence:
+    label: "Evidence Coverage"
+    scale: "V0-V9"
+    checks:
+      - id: "has_unit_tests"
+        weight: 15
+      - id: "has_integration_tests"
+        weight: 12
+      - id: "test_to_source_ratio"
+        weight: 12
+      - id: "ci_test_execution"
+        weight: 10
+      - id: "validation_scripts"
+        weight: 8
+      - id: "code_ownership_docs"
+        weight: 8
+      - id: "contributing_guide"
+        weight: 8
+      - id: "performance_benchmarks"
+        weight: 8
+      - id: "security_scanning_evidence"
+        weight: 10
+      - id: "coverage_tracking"
+        weight: 9

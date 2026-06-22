@@ -1,0 +1,32 @@
+# Default owners for the entire repository
+* @your-org/maintainers
+
+# Core application logic
+/app/ @your-org/core-devs
+/app/agents/ @your-org/core-devs
+/app/pipeline/ @your-org/core-devs
+/app/registry/ @your-org/core-devs
+
+# Analysis modules
+/app/analysis/ @your-org/data-scientists
+/app/tools/ @your-org/data-scientists
+
+# Excel processing
+/app/excel/ @your-org/excel-devs
+
+# LLM integration
+/app/llm/ @your-org/ai-devs
+/app/llm/prompts/ @your-org/ai-devs
+
+# CI/CD and infrastructure
+/.github/ @your-org/devops
+/.gitlab-ci.yml @your-org/devops
+/docker/ @your-org/devops
+
+# Tests
+/tests/ @your-org/qa-devs
+
+# Configuration and documentation
+/*.md @your-org/tech-writers
+/config.py @your-org/core-devs
+/requirements.txt @your-org/core-devs

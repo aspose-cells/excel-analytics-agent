@@ -1,0 +1,378 @@
+stages:
+  - lint
+  - test
+  - code_quality
+  - security
+  - validate
+  - score
+  - ai_eval
+  - quality_gate
+  - build
+  - deploy_staging
+  - deploy_production
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  SCORE_THRESHOLD: "30"
+  AI_EVAL_MODEL: "gpt-oss"
+  AI_EVAL_FALLBACK: "gpt-4o-mini"
+  BUILDX_VERSION: "latest"
+  APP_NAME: "excel-ai-agent"
+
+default:
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  timeout: 30m
+
+cache:
+  key:
+    files:
+      - requirements.txt
+    prefix: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - venv/
+  policy: pull-push
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != "main"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# ============================================================
+# Templates
+# ============================================================
+
+.python_job: &python_job
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y wget libgdiplus && rm -rf /var/lib/apt/lists/*
+    - wget http://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu70_70.1-2_amd64.deb && dpkg -i libicu70_70.1-2_amd64.deb || apt-get install -f -y && rm libicu70_70.1-2_amd64.deb
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip setuptools wheel
+    - pip install -r requirements.txt pyyaml
+
+# ============================================================
+# 1. Lint
+# ============================================================
+
+lint:
+  <<: *python_job
+  stage: lint
+  script:
+    - source venv/bin/activate
+    - pip install flake8
+    - flake8 app/ tests/ --max-line-length=120 --count --statistics --exit-zero
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    when: always
+  allow_failure: true
+
+# ============================================================
+# 2. Test
+# ============================================================
+
+test:
+  <<: *python_job
+  stage: test
+  script:
+    - source venv/bin/activate
+    - pip install pytest pytest-cov pytest-html pytest-timeout
+    - pytest tests/ -v --tb=short --timeout=120
+      --junitxml=report_junit.xml
+      --cov=app --cov-report=term --cov-report=xml:coverage.xml
+      --html=report_test.html --self-contained-html
+  artifacts:
+    reports:
+      junit: report_junit.xml
+    paths:
+      - report_junit.xml
+      - coverage.xml
+      - report_test.html
+    when: always
+  coverage: '/TOTAL.+?(\d+)%/'
+
+# ============================================================
+# 3. Code Quality
+# ============================================================
+
+code_quality:
+  <<: *python_job
+  stage: code_quality
+  script:
+    - source venv/bin/activate
+    - pip install pylint radon xenon pycodestyle
+    - mkdir -p output/code_quality
+    - pylint app/ --exit-zero --output-format=json > output/code_quality/pylint_report.json || true
+    - python -m pycodestyle app/ --statistics --count > output/code_quality/pycodestyle_report.txt || true
+    - radon cc app/ -s --order PERCENT > output/code_quality/complexity_report.txt || true
+    - radon mi app/ -s > output/code_quality/maintainability_report.txt || true
+    - echo "=== Code Quality Summary ==="
+    - echo "Pylint, pycodestyle, radon reports generated."
+  artifacts:
+    paths:
+      - output/code_quality/
+    when: always
+  allow_failure: true
+
+# ============================================================
+# 4. Security Scan
+# ============================================================
+
+security_scan:
+  <<: *python_job
+  stage: security
+  script:
+    - source venv/bin/activate
+    - mkdir -p output/security
+    - pip install safety bandit
+    - python scripts/security_scan.py
+    - echo "=== Security Scan Summary ==="
+    - python scripts/security_scan.py 2>&1 | tail -5 || true
+    - echo "Bandit and dependency check completed."
+  artifacts:
+    paths:
+      - output/security/
+    when: always
+  allow_failure: true
+  only:
+    - main
+
+# ============================================================
+# 5. Validate Environment
+# ============================================================
+
+validate:
+  <<: *python_job
+  stage: validate
+  script:
+    - source venv/bin/activate
+    - python scripts/validate_env.py
+  allow_failure: false
+
+# ============================================================
+# 6. Static Maturity Score
+# ============================================================
+
+static_score:
+  <<: *python_job
+  stage: score
+  script:
+    - source venv/bin/activate
+    - pip install pyyaml
+    - mkdir -p output
+    - python scripts/maturity_score.py
+  artifacts:
+    paths:
+      - output/maturity_score.json
+      - output/maturity_score.txt
+    when: always
+
+# ============================================================
+# 7. AI-Assisted Evaluation (gpt-4o -> gpt-4o-mini fallback)
+# ============================================================
+
+ai_eval:
+  <<: *python_job
+  stage: ai_eval
+  script:
+    - source venv/bin/activate
+    - pip install openai pyyaml
+    - python scripts/ai_eval.py
+  artifacts:
+    paths:
+      - output/maturity_score_ai.json
+    when: always
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_MERGE_REQUEST_ID
+  variables:
+    OPENAI_API_KEY: $OPENAI_API_KEY
+    OPENAI_BASE_URL: $OPENAI_BASE_URL
+
+# ============================================================
+# 8. Quality Gate
+# ============================================================
+
+quality_gate:
+  stage: quality_gate
+  image: alpine:latest
+  needs:
+    - static_score
+  script:
+    - apk add --no-cache jq
+    - |
+      echo "=== Quality Gate ==="
+      if [ -f output/maturity_score.json ]; then
+        SCORES=$(cat output/maturity_score.json | jq -r '[.agent_score.score, .agentic.score, .practices.score, .readiness.score, .evidence.score]')
+        MIN_SCORE=$(echo "$SCORES" | jq 'min')
+        AVG_SCORE=$(echo "$SCORES" | jq 'add / length')
+        echo "Minimum score: $MIN_SCORE (threshold: ${SCORE_THRESHOLD})"
+        echo "Average score: $AVG_SCORE"
+        echo ""
+        echo "=== Dimension Breakdown ==="
+        cat output/maturity_score.json | jq -r '
+          to_entries[] | select(.value.score != null) |
+          "  \(.key): \(.value.level) (\(.value.score)/100) - \(.value.label)"
+        '
+        if [ "$(echo "$MIN_SCORE < ${SCORE_THRESHOLD}" | bc)" -eq 1 ]; then
+          echo ""
+          echo "ERROR: Quality gate FAILED - minimum score $MIN_SCORE is below threshold ${SCORE_THRESHOLD}"
+          exit 1
+        fi
+        echo ""
+        echo "Quality gate PASSED"
+      else
+        echo "WARNING: No score report found, skipping quality gate"
+      fi
+  artifacts:
+    paths:
+      - output/maturity_score.json
+    when: always
+
+# ============================================================
+# 9. Docker Build
+# ============================================================
+
+docker_build:
+  stage: build
+  image: docker:latest
+  services:
+    - name: docker:dind
+      command: ["--tls=false"]
+  needs:
+    - quality_gate
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        DOCKER_TAG="$CI_COMMIT_TAG"
+      elif [ "$CI_COMMIT_BRANCH" == "main" ]; then
+        DOCKER_TAG="$CI_COMMIT_SHORT_SHA"
+      else
+        DOCKER_TAG="$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+      fi
+    - echo "Building tag: $DOCKER_TAG"
+    - docker build -f docker/Dockerfile -t "$CI_REGISTRY_IMAGE:$DOCKER_TAG" .
+    - docker tag "$CI_REGISTRY_IMAGE:$DOCKER_TAG" "$CI_REGISTRY_IMAGE:latest"
+    - docker push "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        MAJOR=$(echo "$CI_COMMIT_TAG" | cut -d. -f1)
+        MINOR=$(echo "$CI_COMMIT_TAG" | cut -d. -f1,2)
+        docker tag "$CI_REGISTRY_IMAGE:$DOCKER_TAG" "$CI_REGISTRY_IMAGE:$MAJOR"
+        docker tag "$CI_REGISTRY_IMAGE:$DOCKER_TAG" "$CI_REGISTRY_IMAGE:$MINOR"
+        docker push "$CI_REGISTRY_IMAGE:$MAJOR"
+        docker push "$CI_REGISTRY_IMAGE:$MINOR"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_MERGE_REQUEST_ID
+      when: manual
+      allow_failure: true
+
+# ============================================================
+# 10. Deploy Staging
+# ============================================================
+
+deploy_staging:
+  stage: deploy_staging
+  image: alpine:latest
+  needs:
+    - docker_build
+  before_script:
+    - apk add --no-cache curl jq docker
+  script:
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        DEPLOY_TAG="$CI_COMMIT_TAG"
+      else
+        DEPLOY_TAG="$CI_COMMIT_SHORT_SHA"
+      fi
+    - echo "=== Deploying $APP_NAME:$DEPLOY_TAG to STAGING ==="
+    - echo "Environment: staging"
+    - echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"
+    - echo "Score check:"
+    - |
+      if [ -f output/maturity_score_ai.json ]; then
+        cat output/maturity_score_ai.json | jq '.combined_scores'
+      elif [ -f output/maturity_score.json ]; then
+        cat output/maturity_score.json | jq '[.agent_score.score, .agentic.score, .practices.score, .readiness.score, .evidence.score]'
+      fi
+    - echo "=== Deploy commands go here (e.g., docker compose pull && docker compose up -d) ==="
+  environment:
+    name: staging
+    url: https://staging.example.com
+    action: start
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ============================================================
+# 11. Deploy Production (manual approval required)
+# ============================================================
+
+deploy_production:
+  stage: deploy_production
+  image: alpine:latest
+  needs:
+    - deploy_staging
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        DEPLOY_TAG="$CI_COMMIT_TAG"
+      else
+        DEPLOY_TAG="$CI_COMMIT_SHORT_SHA"
+      fi
+    - echo "=== Deploying $APP_NAME:$DEPLOY_TAG to PRODUCTION ==="
+    - echo "Environment: production"
+    - echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"
+    - echo ""
+    - echo "=== Maturity Score Summary ==="
+    - |
+      if [ -f output/maturity_score_ai.json ]; then
+        cat output/maturity_score_ai.json | jq -r '
+          .combined_scores | to_entries[] |
+          "\(.key): \(.value.combined_score)/100"
+        '
+      elif [ -f output/maturity_score.json ]; then
+        cat output/maturity_score.json | jq -r '
+          to_entries[] | select(.value.score != null) |
+          "\(.key): \(.value.level) (\(.value.score)/100)"
+        '
+      fi
+    - echo ""
+    - echo "=== Running production deployment ==="
+    - echo "Deploy commands go here"
+  environment:
+    name: production
+    url: https://production.example.com
+    action: start
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+  when: manual
+
+# ============================================================
+# Include SAST/Secret Detection templates (GitLab Ultimate)
+# ============================================================
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Dependency-Scanning.gitlab-ci.yml
+  - template: Code-Quality.gitlab-ci.yml
