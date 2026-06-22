@@ -40,7 +40,6 @@ It behaves like a lightweight **data analyst agent** for structured Excel files.
 - Structured execution pipeline
 
 ### 🛡️ Engineering Excellence
-- **S9/A9/P9/R9/V9** maturity rating across all dimensions
 - 100% type-hinted codebase
 - Google-style docstrings on all public APIs
 - Comprehensive error handling with circuit breaker + retry
