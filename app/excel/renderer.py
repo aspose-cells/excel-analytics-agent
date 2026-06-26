@@ -13,10 +13,10 @@ class ChartRenderer:
     def add_line_chart(
         ws, first_row: int, first_col: int, row_count: int
     ) -> None:
-        """Add a line chart to the worksheet.
+        """Add or update a line chart on the worksheet.
 
-        The chart uses the column at ``first_col`` as the X-axis (categories)
-        and the column at ``first_col + 1`` as the Y-axis (values).
+        If a chart already exists, its data series are updated in-place
+        (avoids Aspose.Cells save persistence bug with chart removal).
 
         Args:
             ws: The target worksheet.
@@ -48,17 +48,25 @@ class ChartRenderer:
             category_range = f"{category_start}:{category_end}"
             value_range = f"{value_start}:{value_end}"
 
-            chart_index = ws.charts.add(ChartType.LINE, 5, 5, 25, 15)
-            chart = ws.charts[chart_index]
+            existing = list(ws.charts)
+            if existing:
+                chart = existing[0]
+                chart.n_series.clear()
+                chart.n_series.add(value_range, True)
+                chart.n_series.category_data = category_range
+                chart.title.text = "Analysis Result"
+                if chart.n_series.length > 0:
+                    chart.n_series[0].data_labels.show_value = True
+            else:
+                chart_index = ws.charts.add(ChartType.LINE, 5, 5, 25, 15)
+                chart = ws.charts[chart_index]
+                chart.n_series.add(value_range, True)
+                chart.n_series.category_data = category_range
+                chart.title.text = "Analysis Result"
+                if chart.n_series.length > 0:
+                    chart.n_series[0].data_labels.show_value = True
 
-            series_index = chart.n_series.add(value_range, True)
-            chart.n_series.category_data = category_range
-
-            series = chart.n_series[series_index]
-            chart.title.text = "Analysis Result"
-            series.data_labels.show_value = True
-
-            logger.info("Line chart added successfully")
+            logger.info("Line chart added/updated successfully")
         except Exception as e:
             logger.error(f"Failed to add line chart: {e}")
             raise

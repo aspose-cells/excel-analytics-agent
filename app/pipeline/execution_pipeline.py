@@ -40,6 +40,11 @@ class ExecutionPipeline:
 
         numeric_df = df.select_dtypes(include=['number'])
 
+        exclude_patterns = ("_Cluster", "_cluster", "_Label", "_label")
+        numeric_df = numeric_df.loc[
+            :, ~numeric_df.columns.str.endswith(exclude_patterns)
+        ]
+
         numeric_columns: List[str] = numeric_df.columns.tolist()
 
         results: Dict[str, Any] = {}
@@ -91,6 +96,18 @@ class ExecutionPipeline:
 
                     tool_results: Dict[str, Any] = {}
 
+                    # =====================================
+                    # CLUSTERING: build existing column map
+                    # =====================================
+
+                    cluster_col_map: Dict[str, int] = {}
+                    if tool_name == "clustering":
+                        header_row = ws.cells.min_data_row
+                        for c in range(ws.cells.min_data_column, ws.cells.max_data_column + 1):
+                            cell_val = ws.cells.get(header_row, c).value
+                            if cell_val and str(cell_val).lower().endswith(("_cluster", "_label")):
+                                cluster_col_map[str(cell_val)] = c
+
                     for col_idx, col in enumerate(numeric_columns):
 
                         values = (
@@ -114,21 +131,22 @@ class ExecutionPipeline:
                         if tool_name == "clustering":
 
                             clusters = result["clusters"]
+                            header_row = ws.cells.min_data_row
+                            col_name = f"{col}_Cluster"
 
-                            # header
-                            ws.cells.get(
-                                ws.cells.min_data_row,
-                                ws.cells.max_data_column + 1
-                            ).put_value(f"{col}_Cluster")
+                            if col_name in cluster_col_map:
+                                target_col = cluster_col_map[col_name]
+                            else:
+                                target_col = ws.cells.max_data_column + 1
+                                ws.cells.get(header_row, target_col).put_value(col_name)
 
-                            maxdataColumn = ws.cells.max_data_column
                             for idx, cluster_id in enumerate(clusters):
 
-                                excel_row = ws.cells.min_data_row + idx + 1
+                                excel_row = header_row + idx + 1
 
                                 cell = ws.cells.get(
                                     excel_row,
-                                    maxdataColumn
+                                    target_col
                                 )
 
                                 cell.put_value(cluster_id)

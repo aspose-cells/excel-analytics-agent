@@ -19,7 +19,7 @@ def run_pca(values: List[float]) -> Dict[str, Any]:
         logger.error(f"PCA analysis failed: {e}")
         raise ToolNotFoundError(f"PCA analysis failed: {e}") from e
 
-def correlation() -> Dict[str, Any]:
+def register() -> Dict[str, Any]:
     """Register the PCA tool in the tool registry.
 
     Returns:

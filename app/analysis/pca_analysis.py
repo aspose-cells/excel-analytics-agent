@@ -23,7 +23,13 @@ class PCAAnalysis:
         try:
             numeric = df.select_dtypes(include=['number'])
 
-            pca = PCA(n_components=2)
+            n_features = numeric.shape[1]
+            n_components = min(2, n_features)
+
+            if n_components < 1:
+                return {"explained_variance": [], "components": []}
+
+            pca = PCA(n_components=n_components)
 
             components = pca.fit_transform(numeric)
 

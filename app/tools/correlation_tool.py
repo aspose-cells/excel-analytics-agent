@@ -19,14 +19,14 @@ def run_correlation(values: List[float]) -> Dict[str, Any]:
         logger.error(f"Correlation analysis failed: {e}")
         raise ToolNotFoundError(f"Correlation analysis failed: {e}") from e
 
-def correlation() -> Dict[str, Any]:
+def register() -> Dict[str, Any]:
     """Register the correlation tool in the tool registry.
 
     Returns:
         Dict describing the tool's function and input type.
     """
     return {
-        "anomaly": {
+        "correlation": {
             "func": run_correlation,
             "input": "dataframe"
         }

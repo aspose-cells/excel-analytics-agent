@@ -15,14 +15,14 @@ client = OpenAI(
 class Planner:
     """LLM-based planner that creates analysis plans from user requests."""
 
-    def create_plan(self, request: str) -> Dict[str, Any]:
+    def create_plan(self, request: str) -> tuple[Dict[str, Any], int]:
         """Create an analysis plan from a user request using the LLM.
 
         Args:
             request: User's natural language request.
 
         Returns:
-            Dict containing the analysis plan with a 'tools' key.
+            Tuple of (plan dict with a 'tools' key, token usage count).
 
         Raises:
             PlannerError: If the LLM output is invalid or the plan is malformed.
@@ -43,6 +43,8 @@ class Planner:
                 ]
             )
 
+            token_usage = response.usage.total_tokens if response.usage else 0
+
             content = response.choices[0].message.content
             try:
                 plan = json.loads(content)
@@ -58,7 +60,7 @@ class Planner:
                 raise PlannerError(f"Invalid plan format: {plan}")
 
             logger.info(f"Plan created with tools: {plan.get('tools', [])}")
-            return plan
+            return plan, token_usage
 
         except PlannerError:
             raise

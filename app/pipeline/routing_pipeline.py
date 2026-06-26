@@ -10,15 +10,15 @@ class RoutingPipeline:
     def __init__(self) -> None:
         self.planner = Planner()
 
-    def route(self, file_path: str, request: str) -> Dict[str, Any]:
-        """Route a user request to the planner and return a plan.
+    def route(self, file_path: str, request: str) -> tuple[Dict[str, Any], int]:
+        """Route a user request to the planner and return a plan with token usage.
 
         Args:
             file_path: Path to the Excel file.
             request: User's natural language request.
 
         Returns:
-            Dict containing the analysis plan.
+            Tuple of (plan dict, token usage count).
         """
         try:
             return self.planner.create_plan(request)
