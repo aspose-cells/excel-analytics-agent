@@ -1,3 +1,4 @@
+import os
 import aspose.cells as cells
 
 from app.logger import logger
@@ -11,6 +12,10 @@ class ExcelWriter:
     def write_report(output_path: str, reports: dict) -> None:
         """Write a dictionary of report data to an Excel file.
 
+        If the file already exists (i.e. the executor already saved the
+        workbook with source data, results and the Analysis Summary sheet)
+        this method is a no-op to avoid duplicate watermark sheets.
+
         Args:
             output_path: Destination file path for the output Excel file.
             reports: Dictionary mapping report names to their values.
@@ -18,6 +23,13 @@ class ExcelWriter:
         Raises:
             ExcelWriteError: If writing the Excel file fails.
         """
+        if os.path.isfile(output_path):
+            logger.info(
+                "Report workbook already exists at '%s' — skipping duplicate save",
+                output_path,
+            )
+            return
+
         try:
             workbook = cells.Workbook()
             sheet = workbook.worksheets[0]

@@ -1,6 +1,5 @@
 from app.logger import logger
 from app.exceptions import PipelineError
-from app.excel.reader import ExcelReader
 from app.registry.tool_registry import TOOL_REGISTRY
 
 from aspose.cells import Workbook
@@ -13,30 +12,64 @@ from app.excel.comment_writer import CommentWriter
 from app.llm.explanation_generator import NarrativeGenerator
 from typing import Any, Dict, List
 
+import pandas as pd
+
+
+def _worksheet_to_dataframe(ws) -> pd.DataFrame:
+    """Convert an Aspose worksheet to a pandas DataFrame.
+
+    Args:
+        ws: An aspose.cells Worksheet object.
+
+    Returns:
+        DataFrame with the first row used as column headers.
+    """
+    cells_obj = ws.cells
+    first_row = cells_obj.min_data_row
+    first_col = cells_obj.min_data_column
+    last_row = cells_obj.max_data_row
+    last_col = cells_obj.max_data_column
+
+    data = []
+    for r in range(first_row, last_row + 1):
+        row = []
+        for c in range(first_col, last_col + 1):
+            row.append(cells_obj.get(r, c).value)
+        data.append(row)
+
+    return pd.DataFrame(data[1:], columns=data[0])
+
 
 class ExecutionPipeline:
     """Pipeline that executes analysis tools against an Excel file."""
 
-    def execute(self, file_path: str, plan: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, file_path: str, plan: Dict[str, Any],
+                output_path: str | None = None) -> Dict[str, Any]:
         """Execute the analysis plan against the given Excel file.
 
         Args:
-            file_path: Path to the Excel file.
+            file_path: Path to the input Excel file (read-only).
             plan: Dict containing 'tools' list and optional configuration.
+            output_path: Path for the output Excel file. Source data is
+                copied here with all results. If None, defaults to
+                ``file_path`` (overwrites input).
 
         Returns:
             Dict with row_count, column_count, numeric_columns,
             analysis_results, and summary.
         """
         # =====================================
-        # 1. Load dataframe
+        # 1. Load workbook & dataframe
         # =====================================
 
         try:
-            df = ExcelReader.load_sheet_as_dataframe(file_path)
+            wb = Workbook(file_path)
         except Exception as e:
-            logger.error(f"Failed to load Excel file: {e}")
-            raise PipelineError(f"Failed to load Excel file: {e}") from e
+            logger.error(f"Failed to load workbook: {e}")
+            raise PipelineError(f"Failed to load workbook: {e}") from e
+
+        ws = wb.worksheets[0]
+        df = _worksheet_to_dataframe(ws)
 
         numeric_df = df.select_dtypes(include=['number'])
 
@@ -48,18 +81,6 @@ class ExecutionPipeline:
         numeric_columns: List[str] = numeric_df.columns.tolist()
 
         results: Dict[str, Any] = {}
-
-        # =====================================
-        # 2. Load workbook
-        # =====================================
-
-        try:
-            wb = Workbook(file_path)
-        except Exception as e:
-            logger.error(f"Failed to load workbook: {e}")
-            raise PipelineError(f"Failed to load workbook: {e}") from e
-
-        ws = wb.worksheets[0]
 
         # =====================================
         # 3. Execute tools
@@ -251,11 +272,31 @@ class ExecutionPipeline:
             logger.error(f"Failed to add comments: {e}")
 
         # =====================================
-        # 8. Save workbook
+        # 8. Write meta-data to a separate sheet
         # =====================================
 
         try:
-            wb.save(file_path)
+            meta_sheet = wb.worksheets.add("Analysis Summary")
+            meta = [
+                ("row_count", str(len(df))),
+                ("column_count", str(len(df.columns))),
+                ("numeric_columns", str(numeric_columns)),
+                ("analysis_results", str(results)),
+                ("summary", str(summary)),
+            ]
+            for i, (k, v) in enumerate(meta):
+                meta_sheet.cells.get(i, 0).put_value(k)
+                meta_sheet.cells.get(i, 1).put_value(v)
+        except Exception as e:
+            logger.error(f"Failed to write meta-data sheet: {e}")
+
+        # =====================================
+        # 9. Save workbook to output path
+        # =====================================
+
+        try:
+            save_path = output_path or file_path
+            wb.save(save_path)
         except Exception as e:
             logger.error(f"Failed to save workbook: {e}")
             raise PipelineError(f"Failed to save workbook: {e}") from e

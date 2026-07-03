@@ -11,3 +11,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_PATH = PROJECT_ROOT / "samples"
 OUTPUT_PATH = PROJECT_ROOT / "output"
+
+# Aspose.Cells license ¡ª set ASPOSE_LICENSE in .env to a license file path
+_license_path = os.getenv("ASPOSE_LICENSE")
+if _license_path:
+    try:
+        import aspose.cells
+        aspose.cells.License().set_license(_license_path)
+    except Exception:
+        pass

@@ -23,12 +23,16 @@ class ExcelAgent:
         self.learning = LearningEngine()
 
     def run(self, file_path: str, output_file: str, user_request: str,
-            job_type: str = "production") -> Dict[str, Any]:
+            job_type: str = "production",
+            output_excel: str | None = None) -> Dict[str, Any]:
         """Execute the full analysis workflow: plan, execute, and generate report.
 
         Args:
-            file_path: Path to the input Excel file.
+            file_path: Path to the input Excel file (read-only).
             output_file: Path for the output report.
+            output_excel: Path for the output Excel file. Source data is
+                copied here with all results. If None, defaults to
+                ``output_file`` with ``.xlsx`` extension.
             user_request: User's natural language request.
             job_type: Type of job ('production' or 'test').
 
@@ -59,9 +63,11 @@ class ExcelAgent:
         tools_used = plan.get("tools", []) if isinstance(plan, dict) else []
 
         try:
+            output_excel_path = output_excel or output_file.rsplit(".", 1)[0] + ".xlsx"
             results = self.executor.execute(
                 file_path=file_path,
-                plan=plan
+                plan=plan,
+                output_path=output_excel_path
             )
         except Exception as e:
             logger.error(f"Execution failed: {e}")
