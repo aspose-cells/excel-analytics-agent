@@ -145,8 +145,8 @@ security_scan:
       - output/security/
     when: always
   allow_failure: true
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
 
 # ============================================================
 # 5. Validate Environment
@@ -264,7 +264,7 @@ docker_build:
       else
         DOCKER_TAG="$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
       fi
-    - echo "Building tag: $DOCKER_TAG"
+    - 'echo "Building tag: $DOCKER_TAG"'
     - docker build -f docker/Dockerfile -t "$CI_REGISTRY_IMAGE:$DOCKER_TAG" .
     - docker tag "$CI_REGISTRY_IMAGE:$DOCKER_TAG" "$CI_REGISTRY_IMAGE:latest"
     - docker push "$CI_REGISTRY_IMAGE:$DOCKER_TAG"
@@ -303,9 +303,9 @@ deploy_staging:
       else
         DEPLOY_TAG="$CI_COMMIT_SHORT_SHA"
       fi
-    - echo "=== Deploying $APP_NAME:$DEPLOY_TAG to STAGING ==="
-    - echo "Environment: staging"
-    - echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"
+    - 'echo "=== Deploying $APP_NAME:$DEPLOY_TAG to STAGING ==="'
+    - 'echo "Environment: staging"'
+    - 'echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"'
     - echo "Score check:"
     - |
       if [ -f output/maturity_score_ai.json ]; then
@@ -320,6 +320,7 @@ deploy_staging:
     action: start
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
 
 # ============================================================
 # 11. Deploy Production (manual approval required)
@@ -339,9 +340,9 @@ deploy_production:
       else
         DEPLOY_TAG="$CI_COMMIT_SHORT_SHA"
       fi
-    - echo "=== Deploying $APP_NAME:$DEPLOY_TAG to PRODUCTION ==="
-    - echo "Environment: production"
-    - echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"
+    - 'echo "=== Deploying $APP_NAME:$DEPLOY_TAG to PRODUCTION ==="'
+    - 'echo "Environment: production"'
+    - 'echo "Image: $CI_REGISTRY_IMAGE:$DEPLOY_TAG"'
     - echo ""
     - echo "=== Maturity Score Summary ==="
     - |
@@ -365,14 +366,7 @@ deploy_production:
     action: start
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
     - if: $CI_COMMIT_TAG
-  when: manual
+      when: manual
 
-# ============================================================
-# Include SAST/Secret Detection templates (GitLab Ultimate)
-# ============================================================
-include:
-  - template: Security/SAST.gitlab-ci.yml
-  - template: Security/Secret-Detection.gitlab-ci.yml
-  - template: Dependency-Scanning.gitlab-ci.yml
-  - template: Code-Quality.gitlab-ci.yml
