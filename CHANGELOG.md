@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-10-09
+
+### Added
+
+- Polynomial regression tool (`poly_regression`) for non-linear curve fitting (degree 2¨C4)
+- Automatic degree clamping for numerical stability and small datasets
+- Narrative summary branch for polynomial regression results
+- Excel roundtrip and full-pipeline integration tests for polynomial regression
+
+### Fixed
+
+- Benchmark tests referenced non-existent class/method names
+  (`AnomalyDetection.detect`, `RegressionAnalysis.analyze`, clustering DataFrame signature)
+
 ## [0.7.0] - 2026-05-26
 
 ### Added
@@ -68,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.8.0]: https://github.com/example/excel_agent/releases/tag/v0.8.0
 [0.7.0]: https://github.com/example/excel_agent/releases/tag/v0.7.0
 [0.6.0]: https://github.com/example/excel_agent/releases/tag/v0.6.0
 [0.5.0]: https://github.com/example/excel_agent/releases/tag/v0.5.0

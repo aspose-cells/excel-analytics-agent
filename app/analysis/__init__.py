@@ -6,12 +6,14 @@ Provides statistical, trend, anomaly, and other data analysis tools.
 from app.logger import logger
 
 from .anomaly import AnomalyAnalysis
+from .arima_forecast import ARIMAForecast
 from .change_point import ChangePointAnalysis
 from .clustering import ClusteringAnalysis
 from .correlation import CorrelationAnalysis
 from .distribution import DistributionAnalysis
 from .fft_analysis import FFTAnalysis
 from .forecasting import ForecastingAnalysis
+from .hypothesis import HypothesisAnalysis
 from .outlier import OutlierAnalysis
 from .pca_analysis import PCAAnalysis
 from .regression import RegressionAnalysis
@@ -22,12 +24,14 @@ from .trend import TrendAnalysis
 
 __all__ = [
     "AnomalyAnalysis",
+    "ARIMAForecast",
     "ChangePointAnalysis",
     "ClusteringAnalysis",
     "CorrelationAnalysis",
     "DistributionAnalysis",
     "FFTAnalysis",
     "ForecastingAnalysis",
+    "HypothesisAnalysis",
     "OutlierAnalysis",
     "PCAAnalysis",
     "RegressionAnalysis",

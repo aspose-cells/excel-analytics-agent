@@ -18,6 +18,7 @@ It behaves like a lightweight **data analyst agent** for structured Excel files.
 ### 📊 Data Analysis (SciPy + sklearn)
 - Anomaly detection (Z-score based)
 - Trend analysis (regression smoothing)
+- Linear & polynomial regression (curve fitting, degree 2–4)
 - FFT frequency analysis
 - Correlation matrix
 - PCA dimensionality reduction

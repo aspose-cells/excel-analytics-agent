@@ -129,6 +129,25 @@ class ExecutionPipeline:
                             if cell_val and str(cell_val).lower().endswith(("_cluster", "_label")):
                                 cluster_col_map[str(cell_val)] = c
 
+                    # =====================================
+                    # HYPOTHESIS: collect all columns for cross-column comparison
+                    # =====================================
+
+                    if tool_name == "hypothesis":
+                        all_groups: List[List[float]] = []
+                        for col in numeric_columns:
+                            values = (
+                                numeric_df[col]
+                                .dropna()
+                                .astype(float)
+                                .tolist()
+                            )
+                            if len(values) >= 3:
+                                all_groups.append(values)
+                        if len(all_groups) >= 2:
+                            results[tool_name] = tool_func(all_groups)
+                        continue
+
                     for col_idx, col in enumerate(numeric_columns):
 
                         values = (
@@ -276,6 +295,9 @@ class ExecutionPipeline:
         # =====================================
 
         try:
+            existing = wb.worksheets.get("Analysis Summary")
+            if existing:
+                wb.worksheets.remove(existing)
             meta_sheet = wb.worksheets.add("Analysis Summary")
             meta = [
                 ("row_count", str(len(df))),

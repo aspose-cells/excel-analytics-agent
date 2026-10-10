@@ -24,7 +24,7 @@ class ForecastingAnalysis:
         try:
             arr = np.array(values, dtype=float)
 
-            model = ExponentialSmoothing(arr)
+            model = ExponentialSmoothing(arr, trend='add', seasonal=None)
             fit = model.fit()
 
             forecast = fit.forecast(steps)

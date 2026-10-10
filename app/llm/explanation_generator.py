@@ -61,6 +61,19 @@ class NarrativeGenerator:
                     f"slope={val['slope']:.4f}, p={val['pvalue']:.4f}."
                 )
 
+        poly = results.get("poly_regression", {})
+        for col, val in poly.items():
+            if isinstance(val, dict) and "r_squared" in val:
+                curve = (
+                    "nonlinear curve"
+                    if val.get("is_better_than_linear")
+                    else "linear trend"
+                )
+                texts.append(
+                    f"{col} fits a degree-{val['degree']} polynomial "
+                    f"(R²={val['r_squared']:.3f}); {curve} is more appropriate."
+                )
+
         statistics = results.get("statistics", {})
         for col, val in statistics.items():
             if isinstance(val, dict) and "mean" in val:
