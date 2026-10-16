@@ -5,6 +5,13 @@ from aspose.cells import CellsHelper
 
 from app.logger import logger
 
+import io
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 class ChartRenderer:
     """Renderer for adding charts to Excel worksheets."""
@@ -69,4 +76,113 @@ class ChartRenderer:
             logger.info("Line chart added/updated successfully")
         except Exception as e:
             logger.error(f"Failed to add line chart: {e}")
+            raise
+
+    @staticmethod
+    def add_poly_fit_chart(
+        ws, poly_results: dict, numeric_df,
+        min_r_squared: float = 0.5
+    ) -> None:
+        """Render scatter + polynomial fit curve for each column and
+        embed the chart images into the worksheet.
+
+        Columns without a meaningful fit are skipped:
+        - ``is_better_than_linear`` is False (a straight line fits as well)
+        - ``r_squared`` below ``min_r_squared`` (weak, noise-like fit)
+
+        Args:
+            ws: The target worksheet.
+            poly_results: ``results["poly_regression"]`` mapping
+                ``{column: {coefficients, r_squared, degree, ...}}``.
+            numeric_df: DataFrame holding the original numeric columns
+                used to draw the scatter points.
+            min_r_squared: Minimum R-squared required to draw the chart
+                (default 0.5).
+
+        Raises:
+            RuntimeError: If rendering or embedding fails.
+        """
+        try:
+            if not poly_results:
+                return
+
+            header_row = ws.cells.min_data_row
+            first_col = ws.cells.min_data_column
+            data_end_row = ws.cells.max_data_row
+
+            # Anchor images below the data and the native line chart
+            # (native chart occupies rows 5-25), stacked vertically.
+            anchor_row = max(data_end_row, 25) + 5
+            row_stride = 22
+
+            chart_index = 0
+
+            for col, val in poly_results.items():
+
+                if not isinstance(val, dict) or "coefficients" not in val:
+                    continue
+                if col not in numeric_df.columns:
+                    continue
+
+                if not val.get("is_better_than_linear"):
+                    logger.info(
+                        "Poly fit chart skipped for '%s': linear trend "
+                        "fits as well as the polynomial",
+                        col,
+                    )
+                    continue
+
+                r_squared = float(val.get("r_squared", 0.0))
+                if r_squared < min_r_squared:
+                    logger.info(
+                        "Poly fit chart skipped for '%s': R2=%.3f "
+                        "below threshold %.2f",
+                        col, r_squared, min_r_squared,
+                    )
+                    continue
+
+                values = (
+                    numeric_df[col]
+                    .dropna()
+                    .astype(float)
+                    .tolist()
+                )
+                if len(values) < 3:
+                    continue
+
+                x = np.arange(len(values), dtype=float)
+                coeffs = np.array(val["coefficients"], dtype=float)
+
+                x_smooth = np.linspace(x.min(), x.max(), 300)
+                y_smooth = np.polyval(coeffs, x_smooth)
+
+                fig, ax = plt.subplots(figsize=(6, 3.5), dpi=100)
+                ax.scatter(x, values, s=15, color="#1f77b4",
+                           label="Original data", zorder=2)
+                ax.plot(x_smooth, y_smooth, color="red", linewidth=2,
+                        label=f"Degree-{val.get('degree', '?')} fit "
+                              f"(R2={r_squared:.3f})",
+                        zorder=3)
+                ax.set_title(f"{col} - Polynomial Fit")
+                ax.set_xlabel("Index")
+                ax.set_ylabel(str(col))
+                ax.legend(loc="best", fontsize=8)
+                ax.grid(True, alpha=0.3)
+                fig.tight_layout()
+
+                buf = io.BytesIO()
+                fig.savefig(buf, format="png")
+                plt.close(fig)
+                buf.seek(0)
+
+                pic_row = anchor_row + chart_index * row_stride
+                ws.pictures.add(pic_row, first_col, buf)
+                chart_index += 1
+
+                logger.info(
+                    "Poly fit chart embedded for column '%s'", col
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to add poly fit chart: {e}")
             raise

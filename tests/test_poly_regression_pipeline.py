@@ -35,6 +35,9 @@ def test_poly_regression_pipeline_excel(tmp_path):
     sheet_names = [ws.name for ws in wb_out.worksheets]
     assert "Analysis Summary" in sheet_names
 
+    # poly fit curve image embedded in the first worksheet
+    assert len(list(wb_out.worksheets[0].pictures)) >= 1
+
     summary_sheet = wb_out.worksheets.get("Analysis Summary")
     summary_text = str(summary_sheet.cells.get(3, 1).value)
     assert "poly_regression" in summary_text

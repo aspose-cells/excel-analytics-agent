@@ -279,6 +279,19 @@ class ExecutionPipeline:
             logger.error(f"Failed to add charts: {e}")
 
         # =====================================
+        # 6b. Render polynomial fit curves (matplotlib)
+        # =====================================
+
+        poly_results = results.get("poly_regression")
+        if isinstance(poly_results, dict) and poly_results:
+            try:
+                ChartRenderer.add_poly_fit_chart(
+                    ws, poly_results, numeric_df
+                )
+            except Exception as e:
+                logger.error(f"Failed to add poly fit chart: {e}")
+
+        # =====================================
         # 7. Add comments
         # =====================================
 

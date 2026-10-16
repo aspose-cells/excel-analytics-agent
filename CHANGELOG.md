@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Polynomial regression tool (`poly_regression`) for non-linear curve fitting (degree 2¨C4)
+- Polynomial regression tool (`poly_regression`) for non-linear curve fitting (degree 2–4)
 - Automatic degree clamping for numerical stability and small datasets
 - Narrative summary branch for polynomial regression results
 - Excel roundtrip and full-pipeline integration tests for polynomial regression
