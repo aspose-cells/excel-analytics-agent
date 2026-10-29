@@ -14,6 +14,7 @@ from .distribution import DistributionAnalysis
 from .fft_analysis import FFTAnalysis
 from .forecasting import ForecastingAnalysis
 from .hypothesis import HypothesisAnalysis
+from .kde import KDEAnalysis
 from .outlier import OutlierAnalysis
 from .pca_analysis import PCAAnalysis
 from .regression import RegressionAnalysis
@@ -32,6 +33,7 @@ __all__ = [
     "FFTAnalysis",
     "ForecastingAnalysis",
     "HypothesisAnalysis",
+    "KDEAnalysis",
     "OutlierAnalysis",
     "PCAAnalysis",
     "RegressionAnalysis",

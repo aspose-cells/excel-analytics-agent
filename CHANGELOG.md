@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-10-20
+
+### Added
+
+- KDE density estimation tool (`kde`) with mode (peak) detection for
+  identifying multimodal distributions and hidden subgroups
+- Histogram + KDE curve charts embedded into Excel via matplotlib,
+  with detected modes marked
+- Narrative summary branch for KDE results
+- Unit, pipeline and Excel embedding tests for KDE
+- Bimodal sample dataset (`samples/customer_segments.xlsx`)
+
 ## [0.8.0] - 2026-10-09
 
 ### Added
@@ -82,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.9.0]: https://github.com/example/excel_agent/releases/tag/v0.9.0
 [0.8.0]: https://github.com/example/excel_agent/releases/tag/v0.8.0
 [0.7.0]: https://github.com/example/excel_agent/releases/tag/v0.7.0
 [0.6.0]: https://github.com/example/excel_agent/releases/tag/v0.6.0

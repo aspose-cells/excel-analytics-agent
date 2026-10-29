@@ -82,6 +82,20 @@ class NarrativeGenerator:
                     f"min={val['min']:.2f}, max={val['max']:.2f}."
                 )
 
+        kde = results.get("kde", {})
+        for col, val in kde.items():
+            if isinstance(val, dict) and "n_modes" in val:
+                if val.get("is_multimodal"):
+                    locations = ", ".join(
+                        f"{x:.1f}" for x in val.get("mode_locations", [])
+                    )
+                    texts.append(
+                        f"{col} is multimodal ({val['n_modes']} peaks near "
+                        f"{locations}) - likely multiple subgroups."
+                    )
+                else:
+                    texts.append(f"{col} is unimodal (single peak).")
+
         forecast = results.get("forecast", {})
         for col, val in forecast.items():
             if isinstance(val, list) and val:

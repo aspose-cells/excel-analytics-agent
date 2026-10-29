@@ -7,7 +7,7 @@ You MUST output valid JSON only.
 
 Schema:
 {
-  "tools": ["anomaly", "regression", "poly_regression", "trend", "fft", "statistics", "forecast", "arima", "clustering", "seasonality", "correlation", "pca", "hypothesis"],
+  "tools": ["anomaly", "regression", "poly_regression", "trend", "fft", "statistics", "forecast", "arima", "clustering", "seasonality", "correlation", "pca", "hypothesis", "kde"],
   "reason": string,
   "confidence": number (0-1)
 }

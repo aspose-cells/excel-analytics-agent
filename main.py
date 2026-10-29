@@ -13,8 +13,13 @@ SCENARIOS = [
     },
     {
         "input_file": "./samples/sales.xlsx",
-        "user_prompt": "分析 sales.xlsx 的销售趋势，用多项式回归拟合非线性变化",
+        "user_prompt": "Analyze sales trends in sales.xlsx and use polynomial regression to fit nonlinear patterns",
         "output_file": "./output/sales_poly_regression.xlsx",
+    },
+    {
+        "input_file": "./samples/customer_segments.xlsx",
+        "user_prompt": "Analyze the distribution of customer spending amounts using kernel density estimation (KDE) to detect multimodality and determine whether distinct customer segments exist.",
+        "output_file": "./output/customer_kde.xlsx",
     },
 ]
 
@@ -40,6 +45,13 @@ def run_scenario(agent: ExcelAgent, scenario: dict) -> None:
             print(f"{col}: R2={val['r_squared']:.3f}, "
                   f"degree={val['degree']}, "
                   f"better_than_linear={val['is_better_than_linear']}")
+
+    if "kde" in analysis_results:
+        for col, val in analysis_results["kde"].items():
+            if "n_modes" in val:
+                print(f"{col}: modes={val['n_modes']}, "
+                      f"peaks={[round(x, 1) for x in val['mode_locations']]}, "
+                      f"multimodal={val['is_multimodal']}")
 
     print(f"Report: {output_file}")
     print(f"Output Excel: {output_file.rsplit('.', 1)[0]}.xlsx")

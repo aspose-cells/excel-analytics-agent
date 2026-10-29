@@ -292,6 +292,19 @@ class ExecutionPipeline:
                 logger.error(f"Failed to add poly fit chart: {e}")
 
         # =====================================
+        # 6c. Render KDE density charts (matplotlib)
+        # =====================================
+
+        kde_results = results.get("kde")
+        if isinstance(kde_results, dict) and kde_results:
+            try:
+                ChartRenderer.add_kde_chart(
+                    ws, kde_results, numeric_df
+                )
+            except Exception as e:
+                logger.error(f"Failed to add KDE chart: {e}")
+
+        # =====================================
         # 7. Add comments
         # =====================================
 

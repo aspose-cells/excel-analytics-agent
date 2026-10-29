@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import gaussian_kde
 
 
 class ChartRenderer:
@@ -111,9 +112,11 @@ class ChartRenderer:
             data_end_row = ws.cells.max_data_row
 
             # Anchor images below the data and the native line chart
-            # (native chart occupies rows 5-25), stacked vertically.
-            anchor_row = max(data_end_row, 25) + 5
+            # (native chart occupies rows 5-25), stacked vertically and
+            # after any pictures already embedded by other renderers.
             row_stride = 22
+            base_row = max(data_end_row, 25) + 5
+            anchor_row = base_row + len(list(ws.pictures)) * row_stride
 
             chart_index = 0
 
@@ -185,4 +188,94 @@ class ChartRenderer:
 
         except Exception as e:
             logger.error(f"Failed to add poly fit chart: {e}")
+            raise
+
+    @staticmethod
+    def add_kde_chart(ws, kde_results: dict, numeric_df) -> None:
+        """Render histogram + KDE density curve for each column and
+        embed the chart images into the worksheet.
+
+        Detected modes are marked with dashed vertical lines.
+
+        Args:
+            ws: The target worksheet.
+            kde_results: ``results["kde"]`` mapping
+                ``{column: {bandwidth, n_modes, mode_locations, ...}}``.
+            numeric_df: DataFrame holding the original numeric columns.
+
+        Raises:
+            RuntimeError: If rendering or embedding fails.
+        """
+        try:
+            if not kde_results:
+                return
+
+            first_col = ws.cells.min_data_column
+            data_end_row = ws.cells.max_data_row
+
+            row_stride = 22
+            base_row = max(data_end_row, 25) + 5
+            anchor_row = base_row + len(list(ws.pictures)) * row_stride
+
+            chart_index = 0
+
+            for col, val in kde_results.items():
+
+                if not isinstance(val, dict) or "n_modes" not in val:
+                    continue
+                if col not in numeric_df.columns:
+                    continue
+
+                values = (
+                    numeric_df[col]
+                    .dropna()
+                    .astype(float)
+                    .tolist()
+                )
+                if len(values) < 10:
+                    continue
+
+                arr = np.asarray(values, dtype=float)
+                if float(np.std(arr)) == 0.0:
+                    continue
+
+                x_grid = np.linspace(
+                    float(arr.min()), float(arr.max()), 300
+                )
+                density = gaussian_kde(arr)(x_grid)
+
+                fig, ax = plt.subplots(figsize=(6, 3.5), dpi=100)
+                ax.hist(arr, bins=30, density=True, alpha=0.35,
+                        color="#1f77b4", label="Histogram")
+                ax.plot(x_grid, density, color="red", linewidth=2,
+                        label="KDE")
+
+                for location in val.get("mode_locations", []):
+                    ax.axvline(location, color="green", linestyle="--",
+                               linewidth=1)
+
+                ax.set_title(
+                    f"{col} - KDE ({val.get('n_modes', 0)} mode(s))"
+                )
+                ax.set_xlabel(str(col))
+                ax.set_ylabel("Density")
+                ax.legend(loc="best", fontsize=8)
+                ax.grid(True, alpha=0.3)
+                fig.tight_layout()
+
+                buf = io.BytesIO()
+                fig.savefig(buf, format="png")
+                plt.close(fig)
+                buf.seek(0)
+
+                pic_row = anchor_row + chart_index * row_stride
+                ws.pictures.add(pic_row, first_col, buf)
+                chart_index += 1
+
+                logger.info(
+                    "KDE chart embedded for column '%s'", col
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to add KDE chart: {e}")
             raise
