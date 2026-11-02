@@ -96,6 +96,58 @@ class NarrativeGenerator:
                 else:
                     texts.append(f"{col} is unimodal (single peak).")
 
+        change_point = results.get("change_point", {})
+        for col, val in change_point.items():
+            if isinstance(val, list):
+                if val:
+                    positions = ", ".join(
+                        str(item.get("position", "?")) for item in val[:5]
+                    )
+                    texts.append(
+                        f"{col} contains {len(val)} change point(s) at "
+                        f"index {positions}."
+                    )
+                else:
+                    texts.append(f"{col} shows no significant change points.")
+
+        distribution = results.get("distribution", {})
+        for col, val in distribution.items():
+            if isinstance(val, dict) and "pvalue" in val:
+                if val.get("is_normal"):
+                    texts.append(
+                        f"{col} is consistent with a normal distribution "
+                        f"(p={val['pvalue']:.4f})."
+                    )
+                else:
+                    texts.append(
+                        f"{col} deviates from a normal distribution "
+                        f"(p={val['pvalue']:.4f})."
+                    )
+
+        outlier = results.get("outlier", {})
+        for col, val in outlier.items():
+            if isinstance(val, list):
+                if val:
+                    texts.append(f"{col} contains {len(val)} IQR outliers.")
+                else:
+                    texts.append(f"{col} contains no IQR outliers.")
+
+        seasonality = results.get("seasonality", {})
+        for col, val in seasonality.items():
+            if isinstance(val, dict) and "trend" in val:
+                texts.append(
+                    f"{col}: seasonal decomposition completed "
+                    f"({len(val.get('trend', []))} points)."
+                )
+
+        smoothing = results.get("smoothing", {})
+        for col, val in smoothing.items():
+            if isinstance(val, list) and val:
+                texts.append(
+                    f"{col}: moving average smoothing completed "
+                    f"({len(val)} points)."
+                )
+
         forecast = results.get("forecast", {})
         for col, val in forecast.items():
             if isinstance(val, list) and val:

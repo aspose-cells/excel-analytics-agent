@@ -28,7 +28,7 @@ class DistributionAnalysis:
             return {
                 "statistic": float(stat),
                 "pvalue": float(p),
-                "is_normal": p > 0.05
+                "is_normal": bool(p > 0.05)
             }
         except Exception as e:
             logger.error("Normality test failed: %s", e)

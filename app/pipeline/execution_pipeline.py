@@ -91,6 +91,12 @@ class ExecutionPipeline:
         if not isinstance(tools, list):
             tools = [tools]
 
+        # Some tools need more than the generic 3 data points.
+        min_points_by_tool = {
+            "kde": 10,
+            "seasonality": 8,
+        }
+
         for tool_name in tools:
 
             logger.info(f"Running tool: {tool_name}")
@@ -157,7 +163,8 @@ class ExecutionPipeline:
                             .tolist()
                         )
 
-                        if len(values) < 3:
+                        min_points = min_points_by_tool.get(tool_name, 3)
+                        if len(values) < min_points:
                             continue
 
                         result = tool_func(values)

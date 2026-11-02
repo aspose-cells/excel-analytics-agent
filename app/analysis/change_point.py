@@ -24,7 +24,15 @@ class ChangePointAnalysis:
 
             diffs = np.diff(arr)
 
-            threshold = np.std(diffs) * 2
+            spread = float(np.std(diffs))
+
+            # A constant step size means there is no abrupt change at all;
+            # returning early also avoids a zero threshold that would flag
+            # every point.
+            if spread == 0.0:
+                return []
+
+            threshold = spread * 2
 
             result = []
 

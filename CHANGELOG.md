@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-10-30
+
+### Added
+
+- Registered five existing analysis modules as LLM-selectable tools:
+  `change_point`, `distribution`, `outlier`, `seasonality` and `smoothing`
+- Tool descriptions in the planner prompt so the LLM can pick them correctly
+- Narrative summary branches for all five new tools
+- Unit and pipeline tests covering registration and Excel output
+- New `main.py` scenario exercising change point, normality, outlier and
+  smoothing analysis
+
+### Fixed
+
+- Change point detection no longer flags every point when the series has a
+  constant step size (zero threshold)
+- Normality test now returns a native Python bool for `is_normal`
+- Pipeline skips columns that are too short for KDE (<10) and seasonality (<8)
+  instead of failing the whole tool
+
 ## [0.9.0] - 2026-10-20
 
 ### Added
@@ -21,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Polynomial regression tool (`poly_regression`) for non-linear curve fitting (degree 2–4)
+- Polynomial regression tool (`poly_regression`) for non-linear curve fitting (degree 2â€“4)
 - Automatic degree clamping for numerical stability and small datasets
 - Narrative summary branch for polynomial regression results
 - Excel roundtrip and full-pipeline integration tests for polynomial regression
@@ -94,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.10.0]: https://github.com/example/excel_agent/releases/tag/v0.10.0
 [0.9.0]: https://github.com/example/excel_agent/releases/tag/v0.9.0
 [0.8.0]: https://github.com/example/excel_agent/releases/tag/v0.8.0
 [0.7.0]: https://github.com/example/excel_agent/releases/tag/v0.7.0

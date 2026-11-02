@@ -24,10 +24,12 @@ It behaves like a lightweight **data analyst agent** for structured Excel files.
 - PCA dimensionality reduction
 - Forecasting (basic statistical models)
 - Clustering (KMeans)
-- Distribution analysis
+- Distribution analysis (normality testing)
 - KDE density estimation with mode detection (multimodality)
 - Seasonality detection
 - Change point detection
+- IQR outlier detection
+- Moving average smoothing
 
 ### 📈 Excel Intelligence (Aspose.Cells)
 - Highlight anomalies directly in Excel
