@@ -17,6 +17,32 @@ class NarrativeGenerator:
         """
         texts: List[str] = []
 
+        profile = results.get("data_profile", {})
+        if isinstance(profile, dict) and "table" in profile:
+            table = profile["table"]
+            score = float(profile.get("quality_score", 100))
+            texts.append(
+                f"Data quality score {score:.0f}/100 "
+                f"({table.get('rows', 0)} rows, "
+                f"{table.get('columns', 0)} columns, "
+                f"{table.get('duplicate_rows', 0)} duplicate row(s))."
+            )
+
+            issues = profile.get("issues", [])
+            if issues:
+                for issue in issues[:3]:
+                    texts.append(
+                        f"[{issue.get('level', 'INFO')}] "
+                        f"{issue.get('message', '')}"
+                    )
+                if len(issues) > 3:
+                    texts.append(
+                        f"{len(issues) - 3} more data quality issue(s) "
+                        f"listed in the 'Data Quality' sheet."
+                    )
+            else:
+                texts.append("No data quality issues detected.")
+
         anomaly = results.get("anomaly", {})
         for col, items in anomaly.items():
             if items:

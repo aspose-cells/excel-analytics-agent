@@ -12,7 +12,97 @@ from app.excel.comment_writer import CommentWriter
 from app.llm.explanation_generator import NarrativeGenerator
 from typing import Any, Dict, List
 
+import math
+
 import pandas as pd
+
+
+def _cell_value(value):
+    """Normalize a profile value for writing to an Excel cell.
+
+    Args:
+        value: Any profile value.
+
+    Returns:
+        Rounded float, or an empty string for NaN/inf.
+    """
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return ""
+        return round(value, 4)
+    return value
+
+
+def _write_data_quality_sheet(wb, profile: dict) -> None:
+    """Write a data quality report to a dedicated worksheet.
+
+    Args:
+        wb: The target workbook.
+        profile: Result of ``DataQualityAnalysis.profile``.
+    """
+    existing = wb.worksheets.get("Data Quality")
+    if existing:
+        wb.worksheets.remove(existing)
+
+    ws = wb.worksheets.add("Data Quality")
+
+    ws.cells.get(0, 0).put_value("Data Quality Report")
+
+    table = profile.get("table", {})
+    row = 2
+    summary = [
+        ("rows", table.get("rows", 0)),
+        ("columns", table.get("columns", 0)),
+        ("duplicate_rows", table.get("duplicate_rows", 0)),
+        ("duplicate_pct", table.get("duplicate_pct", 0.0)),
+        ("empty_rows", table.get("empty_rows", 0)),
+        ("empty_columns", table.get("empty_columns", 0)),
+        ("quality_score", profile.get("quality_score", 0)),
+    ]
+    for key, value in summary:
+        ws.cells.get(row, 0).put_value(key)
+        ws.cells.get(row, 1).put_value(_cell_value(value))
+        row += 1
+
+    row += 1
+    headers = [
+        "column", "dtype", "missing", "missing_pct", "unique",
+        "constant", "mixed_types", "min", "max", "median", "outliers",
+    ]
+    for col, header in enumerate(headers):
+        ws.cells.get(row, col).put_value(header)
+
+    row += 1
+    for name, info in profile.get("columns", {}).items():
+        values = [
+            name,
+            info.get("dtype", ""),
+            info.get("missing", 0),
+            info.get("missing_pct", 0.0),
+            info.get("unique", 0),
+            info.get("constant", False),
+            info.get("mixed_types", False),
+            info.get("min", ""),
+            info.get("max", ""),
+            info.get("median", ""),
+            info.get("outliers", ""),
+        ]
+        for col, value in enumerate(values):
+            ws.cells.get(row, col).put_value(_cell_value(value))
+        row += 1
+
+    row += 1
+    for col, header in enumerate(["level", "column", "message"]):
+        ws.cells.get(row, col).put_value(header)
+
+    row += 1
+    for issue in profile.get("issues", []):
+        ws.cells.get(row, 0).put_value(issue.get("level", ""))
+        ws.cells.get(row, 1).put_value(issue.get("column") or "")
+        ws.cells.get(row, 2).put_value(issue.get("message", ""))
+        row += 1
+
+    logger.info("Data Quality sheet written")
 
 
 def _worksheet_to_dataframe(ws) -> pd.DataFrame:
@@ -224,9 +314,14 @@ class ExecutionPipeline:
 
                 elif tool_input_type == "dataframe":
 
-                    results[tool_name] = tool_func(
-                        numeric_df
-                    )
+                    # Data profiling needs the full table (including
+                    # text columns), not just the numeric projection.
+                    if tool_name == "data_profile":
+                        results[tool_name] = tool_func(df)
+                    else:
+                        results[tool_name] = tool_func(
+                            numeric_df
+                        )
 
                 # =====================================
                 # UNKNOWN
@@ -344,6 +439,17 @@ class ExecutionPipeline:
                 meta_sheet.cells.get(i, 1).put_value(v)
         except Exception as e:
             logger.error(f"Failed to write meta-data sheet: {e}")
+
+        # =====================================
+        # 8b. Write data quality report sheet
+        # =====================================
+
+        profile_results = results.get("data_profile")
+        if isinstance(profile_results, dict) and "table" in profile_results:
+            try:
+                _write_data_quality_sheet(wb, profile_results)
+            except Exception as e:
+                logger.error(f"Failed to write data quality sheet: {e}")
 
         # =====================================
         # 9. Save workbook to output path

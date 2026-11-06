@@ -10,6 +10,7 @@ from .arima_forecast import ARIMAForecast
 from .change_point import ChangePointAnalysis
 from .clustering import ClusteringAnalysis
 from .correlation import CorrelationAnalysis
+from .data_profile import DataQualityAnalysis
 from .distribution import DistributionAnalysis
 from .fft_analysis import FFTAnalysis
 from .forecasting import ForecastingAnalysis
@@ -29,6 +30,7 @@ __all__ = [
     "ChangePointAnalysis",
     "ClusteringAnalysis",
     "CorrelationAnalysis",
+    "DataQualityAnalysis",
     "DistributionAnalysis",
     "FFTAnalysis",
     "ForecastingAnalysis",

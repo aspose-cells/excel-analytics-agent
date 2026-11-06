@@ -7,13 +7,14 @@ You MUST output valid JSON only.
 
 Schema:
 {
-  "tools": ["anomaly", "regression", "poly_regression", "trend", "fft", "statistics", "forecast", "arima", "clustering", "seasonality", "correlation", "pca", "hypothesis", "kde", "change_point", "distribution", "outlier", "smoothing"],
+  "tools": ["anomaly", "regression", "poly_regression", "trend", "fft", "statistics", "forecast", "arima", "clustering", "seasonality", "correlation", "pca", "hypothesis", "kde", "change_point", "distribution", "outlier", "smoothing", "data_profile"],
   "reason": string,
   "confidence": number (0-1)
 }
 
 Available tools:
 - anomaly: z-score anomaly detection in a numeric column
+- data_profile: table-level data quality check (missing values, duplicate rows, mixed types, constant columns)
 - outlier: IQR-based outlier detection (robust to skewed data)
 - trend: linear trend direction and slope
 - regression: single-column linear regression

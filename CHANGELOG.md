@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-11-04
+
+### Added
+
+- Data quality profiling tool (`data_profile`): missing values,
+  duplicate rows, empty rows/columns, mixed types, constant columns,
+  whitespace issues, numeric-as-text, implausible ranges and IQR
+  outliers, with a 0-100 quality score and level-based issue list
+- Dedicated `Data Quality` worksheet written to the output workbook
+- Narrative summary for data quality results
+- Unit and pipeline tests for data profiling
+- `main.py` scenario profiling the quality of sales data
+
 ## [0.10.0] - 2026-10-30
 
 ### Added
@@ -114,6 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.11.0]: https://github.com/example/excel_agent/releases/tag/v0.11.0
 [0.10.0]: https://github.com/example/excel_agent/releases/tag/v0.10.0
 [0.9.0]: https://github.com/example/excel_agent/releases/tag/v0.9.0
 [0.8.0]: https://github.com/example/excel_agent/releases/tag/v0.8.0

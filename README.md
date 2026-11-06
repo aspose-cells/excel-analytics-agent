@@ -25,6 +25,8 @@ It behaves like a lightweight **data analyst agent** for structured Excel files.
 - Forecasting (basic statistical models)
 - Clustering (KMeans)
 - Distribution analysis (normality testing)
+- Data quality profiling (missing values, duplicate rows, mixed types,
+  constant columns, outliers)
 - KDE density estimation with mode detection (multimodality)
 - Seasonality detection
 - Change point detection

@@ -26,6 +26,11 @@ SCENARIOS = [
         "user_prompt": "Detect change points in sales data, test whether it follows a normal distribution, find outliers, and apply moving average smoothing",
         "output_file": "./output/sales_data_quality.xlsx",
     },
+    {
+        "input_file": "./samples/sales.xlsx",
+        "user_prompt": "Profile the data quality of sales.xlsx: missing values, duplicate rows, mixed types, constant columns and outliers",
+        "output_file": "./output/sales_data_profile.xlsx",
+    },
 ]
 
 
@@ -44,6 +49,14 @@ def run_scenario(agent: ExcelAgent, scenario: dict) -> None:
 
     analysis_results = results.get("analysis_results", {})
     print(f"Tools used: {list(analysis_results.keys())}")
+
+    if "data_profile" in analysis_results:
+        profile = analysis_results["data_profile"]
+        issues = profile.get("issues", [])
+        print(f"quality_score={profile.get('quality_score')}, "
+              f"issues={len(issues)}")
+        for issue in issues[:5]:
+            print(f"  [{issue['level']}] {issue['message']}")
 
     if "poly_regression" in analysis_results:
         for col, val in analysis_results["poly_regression"].items():
