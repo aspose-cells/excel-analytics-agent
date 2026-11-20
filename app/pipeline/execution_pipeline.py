@@ -130,6 +130,73 @@ def _worksheet_to_dataframe(ws) -> pd.DataFrame:
     return pd.DataFrame(data[1:], columns=data[0])
 
 
+def _selected_columns(
+    plan: Dict[str, Any], tool_name: str, numeric_columns: List[str]
+) -> List[str]:
+    """Return the numeric columns a tool must run on.
+
+    The plan may restrict a tool to specific columns via a ``columns``
+    mapping, e.g. ``{"outlier": ["Sales"]}``. Missing, invalid or
+    non-numeric selections fall back to every numeric column so that
+    existing plans keep working.
+
+    Args:
+        plan: The execution plan.
+        tool_name: Name of the tool about to run.
+        numeric_columns: All numeric column names in the sheet.
+
+    Returns:
+        List of column names to analyze.
+    """
+    if not isinstance(plan, dict):
+        return numeric_columns
+
+    spec = plan.get("columns")
+    if not isinstance(spec, dict):
+        return numeric_columns
+
+    requested = spec.get(tool_name)
+    if requested is None:
+        return numeric_columns
+
+    if isinstance(requested, str):
+        requested = [requested]
+
+    if not isinstance(requested, (list, tuple)):
+        logger.warning(
+            f"Ignoring invalid column selection for '{tool_name}': "
+            f"{requested!r}"
+        )
+        return numeric_columns
+
+    selected: List[str] = []
+    lookup: Dict[str, Any] = {}
+    for column in numeric_columns:
+        lookup.setdefault(str(column), column)
+
+    for name in requested:
+        name = str(name)
+        if name in lookup:
+            column = lookup[name]
+            if column not in selected:
+                selected.append(column)
+        else:
+            logger.warning(
+                f"Column '{name}' requested for tool '{tool_name}' is not a "
+                f"numeric column; skipping it"
+            )
+
+    if not selected:
+        logger.warning(
+            f"No valid column for tool '{tool_name}'; falling back to all "
+            f"numeric columns"
+        )
+        return numeric_columns
+
+    logger.info(f"Tool '{tool_name}' restricted to columns: {selected}")
+    return selected
+
+
 class ExecutionPipeline:
     """Pipeline that executes analysis tools against an Excel file."""
 
@@ -231,7 +298,9 @@ class ExecutionPipeline:
 
                     if tool_name == "hypothesis":
                         all_groups: List[List[float]] = []
-                        for col in numeric_columns:
+                        for col in _selected_columns(
+                            plan, tool_name, numeric_columns
+                        ):
                             values = (
                                 numeric_df[col]
                                 .dropna()
@@ -244,7 +313,9 @@ class ExecutionPipeline:
                             results[tool_name] = tool_func(all_groups)
                         continue
 
-                    for col_idx, col in enumerate(numeric_columns):
+                    for col in _selected_columns(
+                        plan, tool_name, numeric_columns
+                    ):
 
                         values = (
                             numeric_df[col]

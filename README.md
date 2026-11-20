@@ -42,6 +42,8 @@ It behaves like a lightweight **data analyst agent** for structured Excel files.
 
 ### 🤖 LLM Integration
 - OpenAI-compatible planner
+- Schema-aware planning: the planner receives a compact summary of the
+  input table (columns, types, ranges, samples) and can target specific columns
 - Tool routing via prompt engineering
 - Structured execution pipeline
 

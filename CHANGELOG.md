@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-11-19
+
+### Added
+
+- Schema-aware planning: the routing pipeline reads the input workbook,
+  builds a compact schema summary (rows, columns, dtypes, missing counts,
+  ranges, sample rows, identifier hints) and sends it to the planner
+- Plans can now target specific columns via `"columns": {"tool": ["col"]}`;
+  the execution pipeline only analyzes the requested numeric columns
+- Identifier detection in the schema summary (e.g. `Customer`, `*_id`)
+- Fallback to all numeric columns when a requested column is missing,
+  non-numeric or when no column selection is provided
+- Unit tests for schema summaries, planner messages, routing and column
+  selection
+
+### Changed
+
+- Planner prompt documents the new `columns` field and the minimum data
+  requirements for clustering and seasonality
+- Planner receives the schema as untrusted data, with an explicit
+  prompt-injection warning
 ## [0.11.0] - 2026-11-04
 
 ### Added
@@ -127,6 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.12.0]: https://github.com/example/excel_agent/releases/tag/v0.12.0
 [0.11.0]: https://github.com/example/excel_agent/releases/tag/v0.11.0
 [0.10.0]: https://github.com/example/excel_agent/releases/tag/v0.10.0
 [0.9.0]: https://github.com/example/excel_agent/releases/tag/v0.9.0
