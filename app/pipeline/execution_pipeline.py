@@ -12,6 +12,8 @@ from app.excel.comment_writer import CommentWriter
 from app.llm.explanation_generator import NarrativeGenerator
 from typing import Any, Dict, List
 
+from pathlib import Path
+
 import math
 
 import pandas as pd
@@ -197,6 +199,83 @@ def _selected_columns(
     return selected
 
 
+def _selected_xy(
+    plan: Dict[str, Any],
+    tool_name: str,
+    numeric_columns: List[str],
+) -> tuple[Any, Any] | None:
+    """Return a validated (x, y) column pair for a regression tool.
+
+    The plan may pair two columns via ``xy``, e.g.
+    ``{"regression": {"x": "Year", "y": "Sales"}}``. Both columns must
+    exist and be numeric; otherwise None is returned and the caller
+    falls back to fitting every numeric column against its row index.
+
+    Args:
+        plan: The execution plan.
+        tool_name: Name of the tool about to run.
+        numeric_columns: All numeric column names in the sheet.
+
+    Returns:
+        Tuple of (x_column, y_column), or None when no valid pair exists.
+    """
+    if not isinstance(plan, dict):
+        return None
+
+    spec = plan.get("xy")
+    if not isinstance(spec, dict):
+        return None
+
+    entry = spec.get(tool_name)
+    if not isinstance(entry, dict):
+        return None
+
+    x_raw = entry.get("x")
+    y_raw = entry.get("y")
+    if x_raw is None or y_raw is None:
+        logger.warning(
+            f"Ignoring incomplete xy selection for '{tool_name}': {entry!r}"
+        )
+        return None
+
+    lookup: Dict[str, Any] = {}
+    for column in numeric_columns:
+        lookup.setdefault(str(column), column)
+
+    x_column = lookup.get(str(x_raw))
+    y_column = lookup.get(str(y_raw))
+
+    if x_column is None or y_column is None:
+        logger.warning(
+            f"Ignoring xy selection for '{tool_name}': x={x_raw!r}, "
+            f"y={y_raw!r} must both be numeric columns"
+        )
+        return None
+
+    if str(x_column) == str(y_column):
+        logger.warning(
+            f"Ignoring xy selection for '{tool_name}': x and y are the "
+            f"same column ('{x_column}')"
+        )
+        return None
+
+    logger.info(f"Tool '{tool_name}' paired {y_column} against {x_column}")
+    return x_column, y_column
+
+
+def _default_output_path(file_path: str) -> str:
+    """Return a non-destructive default output path for an input file.
+
+    Args:
+        file_path: Path to the input workbook.
+
+    Returns:
+        Path next to the input, suffixed with ``_analyzed``.
+    """
+    path = Path(file_path)
+    return str(path.with_name(f"{path.stem}_analyzed{path.suffix}"))
+
+
 class ExecutionPipeline:
     """Pipeline that executes analysis tools against an Excel file."""
 
@@ -208,12 +287,17 @@ class ExecutionPipeline:
             file_path: Path to the input Excel file (read-only).
             plan: Dict containing 'tools' list and optional configuration.
             output_path: Path for the output Excel file. Source data is
-                copied here with all results. If None, defaults to
-                ``file_path`` (overwrites input).
+                copied here with all results. If None, writes to
+                ``<input_stem>_analyzed.xlsx`` next to the input instead
+                of overwriting it.
 
         Returns:
             Dict with row_count, column_count, numeric_columns,
             analysis_results, and summary.
+
+        Raises:
+            PipelineError: If the workbook cannot be read, the output
+                path equals the input path, or saving fails.
         """
         # =====================================
         # 1. Load workbook & dataframe
@@ -313,6 +397,32 @@ class ExecutionPipeline:
                             results[tool_name] = tool_func(all_groups)
                         continue
 
+                    if tool_name in ("regression", "poly_regression"):
+                        pair = _selected_xy(
+                            plan, tool_name, numeric_columns
+                        )
+                        if pair is not None:
+                            x_col, y_col = pair
+                            paired = numeric_df[[x_col, y_col]].dropna()
+                            if len(paired) >= 3:
+                                result = tool_func(
+                                    paired[y_col]
+                                    .astype(float)
+                                    .tolist(),
+                                    x_values=paired[x_col]
+                                    .astype(float)
+                                    .tolist(),
+                                )
+                                result["x_column"] = x_col
+                                tool_results[y_col] = result
+                                results[tool_name] = tool_results
+                                continue
+                            logger.warning(
+                                f"Not enough rows for '{tool_name}' with "
+                                f"x='{x_col}', y='{y_col}'; falling back "
+                                f"to per-column fits"
+                            )
+
                     for col in _selected_columns(
                         plan, tool_name, numeric_columns
                     ):
@@ -390,8 +500,13 @@ class ExecutionPipeline:
                     if tool_name == "data_profile":
                         results[tool_name] = tool_func(df)
                     else:
+                        # Correlation and PCA can be restricted to the
+                        # columns named in the plan.
+                        selected = _selected_columns(
+                            plan, tool_name, numeric_columns
+                        )
                         results[tool_name] = tool_func(
-                            numeric_df
+                            numeric_df[selected]
                         )
 
                 # =====================================
@@ -526,8 +641,15 @@ class ExecutionPipeline:
         # 9. Save workbook to output path
         # =====================================
 
+        save_path = output_path or _default_output_path(file_path)
+
+        if Path(save_path).resolve() == Path(file_path).resolve():
+            raise PipelineError(
+                "Refusing to overwrite the input workbook; "
+                "choose a different output_path"
+            )
+
         try:
-            save_path = output_path or file_path
             wb.save(save_path)
         except Exception as e:
             logger.error(f"Failed to save workbook: {e}")

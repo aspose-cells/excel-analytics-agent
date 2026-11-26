@@ -35,27 +35,46 @@ def _format_cell(value) -> str:
     return text
 
 
-def _is_identifier(name: str, series, non_null) -> bool:
-    """Guess whether a column looks like an identifier instead of a measure."""
+def _is_name_identifier(name: str) -> bool:
+    """Guess from a column name whether it holds identifiers.
+
+    Name-based detection also covers numeric IDs such as ``CustomerID``
+    (1001, 1002, ...), which content-based rules cannot distinguish from
+    a continuous measure.
+
+    Args:
+        name: Column name.
+
+    Returns:
+        True when the name looks like an identifier column.
+    """
     lowered = name.lower().replace(" ", "").replace("_", "").replace("-", "")
     if lowered in {"id", "no", "number", "code", "key"}:
         return True
-    if lowered.endswith("id"):
-        return True
+    return lowered.endswith("id")
 
+
+def _looks_like_text_identifier(series, non_null) -> bool:
+    """Return True when a text column is almost entirely unique.
+
+    Args:
+        series: The full column.
+        non_null: The column without missing values.
+
+    Returns:
+        True when at least 95% of the non-null values are unique.
+    """
     if not len(non_null):
         return False
 
-    is_text = (
-        series.dtype == object
-        or pd.api.types.is_string_dtype(series)
-    )
-    if is_text:
-        try:
-            return non_null.nunique() / len(non_null) >= 0.95
-        except Exception:
-            return False
-    return False
+    is_text = series.dtype == object or pd.api.types.is_string_dtype(series)
+    if not is_text:
+        return False
+
+    try:
+        return non_null.nunique() / len(non_null) >= 0.95
+    except Exception:
+        return False
 
 
 def build_schema_summary(
@@ -92,9 +111,15 @@ def build_schema_summary(
         lines.append(f"Other columns: {', '.join(map(str, text_columns))}")
 
     lines.append("Columns:")
-    shown = list(df.columns)[:max_columns]
+    columns = list(df.columns)
+    duplicate_names = {
+        str(name) for name in columns if columns.count(name) > 1
+    }
+    shown = columns[:max_columns]
     for index, column in enumerate(shown, start=1):
-        series = df[column]
+        # Positional access keeps the summary working when two columns
+        # share the same header (df[column] would return a DataFrame).
+        series = df.iloc[:, index - 1]
         non_null = series.dropna()
         unique = int(non_null.nunique()) if len(non_null) else 0
         missing = int(series.isna().sum())
@@ -108,7 +133,10 @@ def build_schema_summary(
 
         if unique <= 1:
             parts.append("(constant)")
+        if str(column) in duplicate_names:
+            parts.append("(duplicate name)")
 
+        is_identifier = _is_name_identifier(str(column))
         try:
             if pd.api.types.is_numeric_dtype(series) and len(non_null):
                 parts.append(f"min={_format_number(non_null.min())}")
@@ -124,10 +152,15 @@ def build_schema_summary(
                 ]
                 if samples:
                     parts.append(f"sample=[{', '.join(samples)}]")
-                if _is_identifier(str(column), series, non_null):
-                    parts.append("(likely identifier)")
+                if not is_identifier and _looks_like_text_identifier(
+                    series, non_null
+                ):
+                    is_identifier = True
         except Exception as e:
             logger.warning(f"Could not describe column '{column}': {e}")
+
+        if is_identifier:
+            parts.append("(likely identifier)")
 
         lines.append(" | ".join(parts))
 
@@ -137,10 +170,10 @@ def build_schema_summary(
 
     if len(df):
         lines.append(f"Sample rows (first {min(MAX_SAMPLE_ROWS, len(df))}):")
-        for _, row in df.head(MAX_SAMPLE_ROWS).iterrows():
+        for row_index in range(min(MAX_SAMPLE_ROWS, len(df))):
             cells = [
-                f"{column}={_format_cell(row[column])}"
-                for column in shown
+                f"{column}={_format_cell(df.iloc[row_index, position])}"
+                for position, column in enumerate(shown)
             ]
             lines.append("  " + ", ".join(cells))
 

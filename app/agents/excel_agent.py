@@ -10,9 +10,37 @@ from app.metrics import send_agent_metrics
 from app.learning import LearningEngine
 
 
+def _summarize_analysis_items(
+    analysis_results: Dict[str, Any]
+) -> tuple[int, int]:
+    """Count succeeded and failed analysis items.
+
+    A tool that raised stores ``{"error": ...}`` in its slot. That counts
+    as one failure instead of being reported as a success.
+
+    Args:
+        analysis_results: Mapping of tool name to its result.
+
+    Returns:
+        Tuple of (succeeded_items, failed_items).
+    """
+    succeeded = 0
+    failed = 0
+
+    for value in analysis_results.values():
+        if isinstance(value, dict):
+            if "error" in value and len(value) == 1:
+                failed += 1
+            else:
+                succeeded += len(value)
+        elif isinstance(value, list):
+            succeeded += len(value)
+
+    return succeeded, failed
+
+
 class ExcelAgent:
     """Main agent that orchestrates routing, execution, and reporting."""
-
     def __init__(self, agent_name: str = "Excel AI Agent",
                  agent_owner: str = "Xinya Zhu") -> None:
         self.router = RoutingPipeline()
@@ -86,10 +114,17 @@ class ExcelAgent:
         duration_ms = (time.time() - start_time) * 1000
 
         analysis_results = results.get("analysis_results", {})
-        total_analyses = sum(
-            len(cols) if isinstance(cols, dict) else 0
-            for cols in analysis_results.values()
+        items_succeeded, items_failed = _summarize_analysis_items(
+            analysis_results
         )
+
+        if items_failed and items_succeeded:
+            status = "partial"
+        elif items_failed and not items_succeeded:
+            status = "failure"
+
+        if items_failed and not error_msg:
+            error_msg = f"{items_failed} analysis item(s) failed"
 
         send_agent_metrics(
             agent_name=self.agent_name,
@@ -97,9 +132,9 @@ class ExcelAgent:
             job_type=job_type,
             run_id=f"{self.agent_name.lower().replace(' ', '_')}_{int(start_time)}",
             status=status,
-            items_discovered=total_analyses,
-            items_failed=0,
-            items_succeeded=total_analyses,
+            items_discovered=items_succeeded + items_failed,
+            items_failed=items_failed,
+            items_succeeded=items_succeeded,
             run_duration_ms=round(duration_ms, 2),
             token_usage=token_usage,
             api_calls_count=len(tools_used) + 1,

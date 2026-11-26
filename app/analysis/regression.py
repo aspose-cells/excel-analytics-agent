@@ -8,21 +8,48 @@ class RegressionAnalysis:
     """Perform linear regression analysis on data."""
 
     @staticmethod
-    def linear_regression(values: list[float]) -> dict:
+    def linear_regression(
+        values: list[float],
+        x_values: list[float] | None = None,
+    ) -> dict:
         """Fit a linear regression model (y = slope * x + intercept).
 
         Args:
-            values: List of numeric y-values; x is auto-generated as 0..N-1.
+            values: List of numeric y-values.
+            x_values: Optional numeric x-values aligned with ``values``
+                (for example a Year column). When omitted, x is
+                auto-generated as 0..N-1.
 
         Returns:
-            Dict with keys: slope, intercept, rvalue, pvalue, stderr.
+            Dict with keys: slope, intercept, rvalue, pvalue, stderr,
+            n and x_source ("column" or "index").
 
         Raises:
-            AnalysisError: If regression fails.
+            AnalysisError: If regression fails or the inputs are invalid.
         """
         try:
-            x = np.arange(len(values))
             y = np.array(values, dtype=float)
+
+            if y.size < 2:
+                raise AnalysisError(
+                    "Not enough data points for linear regression "
+                    "(need at least 2)"
+                )
+
+            if x_values is None:
+                x = np.arange(y.size, dtype=float)
+                x_source = "index"
+            else:
+                x = np.array(x_values, dtype=float)
+                x_source = "column"
+                if x.size != y.size:
+                    raise AnalysisError(
+                        "x and y must have the same number of values"
+                    )
+                if np.ptp(x) == 0:
+                    raise AnalysisError(
+                        "x values must vary for linear regression"
+                    )
 
             result = linregress(x, y)
 
@@ -31,22 +58,32 @@ class RegressionAnalysis:
                 "intercept": result.intercept,
                 "rvalue": result.rvalue,
                 "pvalue": result.pvalue,
-                "stderr": result.stderr
+                "stderr": result.stderr,
+                "n": int(y.size),
+                "x_source": x_source,
             }
+        except AnalysisError:
+            raise
         except Exception as e:
             logger.error("Linear regression failed: %s", e)
             raise AnalysisError(f"Linear regression failed: {e}") from e
 
     @staticmethod
-    def polynomial_regression(values: list[float], degree: int = 2) -> dict:
+    def polynomial_regression(
+        values: list[float],
+        degree: int = 2,
+        x_values: list[float] | None = None,
+    ) -> dict:
         """Fit a polynomial regression model of the given degree.
 
         Args:
-            values: List of numeric y-values; x is auto-generated as 0..N-1.
+            values: List of numeric y-values.
             degree: Polynomial degree (default 2, i.e. quadratic/parabola).
                 Clamped to 4 (upper bound for numerical stability) and
                 lowered automatically when there are fewer data points
                 than ``degree + 1``.
+            x_values: Optional numeric x-values aligned with ``values``.
+                When omitted, x is auto-generated as 0..N-1.
 
         Returns:
             Dict with keys: coefficients (list, highest degree first,
@@ -54,7 +91,7 @@ class RegressionAnalysis:
             perfect fit), degree (int, actual degree used after
             clamping), is_better_than_linear (bool, True when the
             polynomial R-squared exceeds the linear R-squared by at
-            least 0.01).
+            least 0.01), n and x_source ("column" or "index").
 
         Raises:
             AnalysisError: If degree < 2 or the fit fails.
@@ -87,7 +124,20 @@ class RegressionAnalysis:
                         "(need at least 3)"
                     )
 
-            x = np.arange(arr.size)
+            if x_values is None:
+                x = np.arange(arr.size)
+                x_source = "index"
+            else:
+                x = np.array(x_values, dtype=float)
+                x_source = "column"
+                if x.size != arr.size:
+                    raise AnalysisError(
+                        "x and y must have the same number of values"
+                    )
+                if np.ptp(x) == 0:
+                    raise AnalysisError(
+                        "x values must vary for polynomial regression"
+                    )
 
             coefficients = np.polyfit(x, arr, degree)
 
@@ -112,6 +162,8 @@ class RegressionAnalysis:
                 "r_squared": float(r_squared),
                 "degree": int(degree),
                 "is_better_than_linear": bool(r_squared - linear_r2 >= 0.01),
+                "n": int(arr.size),
+                "x_source": x_source,
             }
         except AnalysisError:
             raise

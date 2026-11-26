@@ -73,3 +73,36 @@ def test_schema_summary_truncates_long_text():
     summary = build_schema_summary(df)
 
     assert "..." in summary
+
+
+def test_schema_summary_flags_numeric_identifier_column():
+    df = pd.DataFrame({
+        "CustomerID": [1001, 1002, 1003],
+        "Amount": [10.0, 20.0, 30.0],
+    })
+
+    summary = build_schema_summary(df)
+
+    assert "CustomerID | int64" in summary
+    assert "(likely identifier)" in summary
+
+
+def test_schema_summary_does_not_flag_unique_measure():
+    df = pd.DataFrame({"Amount": [1.5, 2.5, 3.5, 4.5]})
+
+    summary = build_schema_summary(df)
+
+    assert "(likely identifier)" not in summary
+
+
+def test_schema_summary_survives_duplicate_column_names():
+    df = pd.DataFrame(
+        [[1, 2], [3, 4]],
+        columns=["Amount", "Amount"],
+    )
+
+    summary = build_schema_summary(df)
+
+    assert "Rows: 2 | Columns: 2" in summary
+    assert summary.count("Amount") >= 2
+    assert "(duplicate name)" in summary

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-11-24
+
+### Added
+
+- `xy` planning field: regression and polynomial regression can use a real
+  numeric x column (for example `Year`) instead of the row index
+- Correlation and PCA honor the plan's `columns` selection
+- Failure accounting: tools that raise are reported as failed items, with
+  `partial` status when only some tools succeed
+- Tests for x/y regression, output-path safety, dataframe tool selection,
+  metrics accounting and console-safe logging
+
+### Changed
+
+- `ExecutionPipeline.execute` no longer overwrites the input workbook when
+  `output_path` is omitted; it writes `<stem>_analyzed.xlsx` instead and
+  rejects an explicit output path equal to the input
+- PCA drops rows with missing values and reports `rows_used`
+- Schema summary flags numeric identifier columns (for example `CustomerID`)
+  and tolerates duplicate column names
+- Console logging replaces characters that the active code page cannot encode
+
+### Fixed
+
+- Regression R-squared values based on the row index no longer masquerade
+  as a relationship with a time column
 ## [0.12.0] - 2026-11-19
 
 ### Added
@@ -148,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistical summary generation
 - Command-line interface for basic operations
 
+[0.13.0]: https://github.com/example/excel_agent/releases/tag/v0.13.0
 [0.12.0]: https://github.com/example/excel_agent/releases/tag/v0.12.0
 [0.11.0]: https://github.com/example/excel_agent/releases/tag/v0.11.0
 [0.10.0]: https://github.com/example/excel_agent/releases/tag/v0.10.0

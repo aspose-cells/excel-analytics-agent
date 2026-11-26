@@ -144,16 +144,26 @@ class ChartRenderer:
                     )
                     continue
 
-                values = (
-                    numeric_df[col]
-                    .dropna()
-                    .astype(float)
-                    .tolist()
-                )
-                if len(values) < 3:
-                    continue
+                x_column = val.get("x_column")
+                if x_column and x_column in numeric_df.columns:
+                    paired = numeric_df[[x_column, col]].dropna()
+                    if len(paired) < 3:
+                        continue
+                    x = paired[x_column].astype(float).to_numpy()
+                    values = paired[col].astype(float).tolist()
+                    x_label = str(x_column)
+                else:
+                    values = (
+                        numeric_df[col]
+                        .dropna()
+                        .astype(float)
+                        .tolist()
+                    )
+                    if len(values) < 3:
+                        continue
+                    x = np.arange(len(values), dtype=float)
+                    x_label = "Index"
 
-                x = np.arange(len(values), dtype=float)
                 coeffs = np.array(val["coefficients"], dtype=float)
 
                 x_smooth = np.linspace(x.min(), x.max(), 300)
@@ -167,7 +177,7 @@ class ChartRenderer:
                               f"(R2={r_squared:.3f})",
                         zorder=3)
                 ax.set_title(f"{col} - Polynomial Fit")
-                ax.set_xlabel("Index")
+                ax.set_xlabel(x_label)
                 ax.set_ylabel(str(col))
                 ax.legend(loc="best", fontsize=8)
                 ax.grid(True, alpha=0.3)
